@@ -17,13 +17,6 @@
 ### 1.4. Người Tạo/Chủ Sở Hữu
 **Victor Howard**
 
-### 1.5. Trạng Thái
-- [X] Draft
-- [ ] In Review
-- [ ] Approved
-- [ ] In Development
-- [ ] Completed
-
 ---
 
 ## 2. TỔNG QUAN SẢN PHẨM
@@ -55,9 +48,9 @@
 
 ### 3.2. Phạm Vi (Scope)
 #### 3.2.1. Trong Phạm Vi (In-Scope)
-- 
-- 
-- 
+- Tính năng thiết kế thời khóa biểu
+- Tính năng theo dõi tiến trình dạy
+- Tính năng cung cấp tài liệu liên quan đến từng môn học
 
 #### 3.2.2. Ngoài Phạm Vi (Out-of-Scope)
 - 
@@ -65,7 +58,7 @@
 - 
 
 ### 3.3. Giả Định (Assumptions)
-- 
+- Giả định sẵn 10 môn học, mỗi môn học có nhiều bài giảng, tài liệu liên quan đến mỗi bài giảng
 - 
 - 
 
@@ -86,29 +79,28 @@
 - **Tuổi:** 30-60
 - **Nghề nghiệp:** Giảng viên
 - **Kỹ năng kỹ thuật:** Thấp
-- **Mục tiêu:** 
-- **Pain Points:** 
-- **Use Cases:** 
-
-### 4.2. User Stories
-**[Liệt kê các user stories dưới dạng: "As a [user type], I want [goal] so that [benefit]"]**
-
-1. As a [user type], I want [goal] so that [benefit]
-2. As a [user type], I want [goal] so that [benefit]
-3. As a [user type], I want [goal] so that [benefit]
+- **Mục tiêu:** Theo dõi lịch giảng dạy và tham khảo tài liệu liên quan
+- **Pain Points:** Trước đây cô đều phải xem hôm nay dạy bài nào và tự tìm tài liệu
+- **Use Cases:** Dùng tool để xem lịch giảng dạy hôm nay, tuần này, tháng này.
 
 ---
 
 ## 5. TÍNH NĂNG CHỨC NĂNG (Functional Requirements)
 
 ### 5.1. Tính Năng Ưu Tiên Cao (Must Have - P0)
-#### FR-001: [Tên Tính Năng]
+#### FR-001: Nhập môn học
 - **Mô tả:** 
-- **User Story:** 
-- **Acceptance Criteria:**
-  - 
-  - 
-- **Input:** 
+Một môn học bao gồm các thông tin sau: 
+1. Các bài học
+Mỗi bài học bao gồm: Tên bài học, Thời lượng
+2. Địa điểm học
+3. Yêu cầu: là các môn học cần phải học trước khi học môn này.
+4. Phân loại
+Một môn học được phân làm 3 loại: Chính trị, Quân sự, Hậu cần kỹ thuật.
+Trong đấy:
+Quân sự lại được phân làm 5 loại: Thông tin, Chiến thuật, Vũ khí, Điều lệnh, Thể lực.
+Hậu cần kỹ thuật lại được phân làm 2 loại: Hậu cần, Kỹ thuật.
+- **Input:** Cho người dùng nhập các thông tin cần thiết của một môn học hoặc nhập từ một file Excel.
 - **Output:** 
 - **Business Rules:** 
 
@@ -140,7 +132,7 @@
 
 ---
 
-## 6. TÍNH NĂNG PHI CHỨC NĂNG (Non-Functional Requirements)
+## 6. TÍNH NĂNG PHI CHỨC NĂNG (Non-Functional Requirements) 
 
 ### 6.1. Hiệu Năng (Performance)
 - **Thời gian khởi động ứng dụng:** [ví dụ: < 3 giây]
@@ -149,29 +141,29 @@
 - **Sử dụng bộ nhớ:** [ví dụ: < 200MB RAM khi idle]
 
 ### 6.2. Khả Năng Mở Rộng (Scalability)
-- **Số lượng người dùng đồng thời:** [ví dụ: 1 người dùng - single user app]
-- **Dung lượng dữ liệu:** [ví dụ: Hỗ trợ tối đa 1GB dữ liệu]
+- **Số lượng người dùng đồng thời:** 1 người dùng - single user app
+- **Dung lượng dữ liệu:** [ví dụ: Hỗ trợ tối đa 10GB dữ liệu]
 
 ### 6.3. Bảo Mật (Security)
-- **Xác thực:** [Có/Không cần đăng nhập]
+- **Xác thực:** Cần đăng nhập
 - **Mã hóa dữ liệu:** [Có/Không]
 - **Bảo vệ dữ liệu nhạy cảm:** 
 - **Tuân thủ:** [GDPR, các quy định khác nếu có]
 
 ### 6.4. Khả Năng Sử Dụng (Usability)
 - **Học cách sử dụng:** [ví dụ: < 10 phút]
-- **Giao diện:** [Modern, intuitive, responsive]
-- **Hỗ trợ đa ngôn ngữ:** [Có/Không - nếu có, liệt kê ngôn ngữ]
-- **Accessibility:** [Tuân thủ WCAG 2.1 Level AA]
+- **Giao diện:** Modern, intuitive, responsive
+- **Hỗ trợ đa ngôn ngữ:** Có - Tiếng Việt, Tiếng Anh (English)
+- **Accessibility:** Tuân thủ WCAG 2.1 Level AA
 
 ### 6.5. Độ Tin Cậy (Reliability)
 - **Uptime:** [ví dụ: 99.9%]
-- **Xử lý lỗi:** [Graceful error handling, không crash]
-- **Backup dữ liệu:** [Tự động/Thủ công]
+- **Xử lý lỗi:** Graceful error handling, không crash
+- **Backup dữ liệu:** Tự động
 
 ### 6.6. Khả Năng Bảo Trì (Maintainability)
-- **Code quality:** [Tuân thủ PEP 8, có type hints]
-- **Documentation:** [Code comments, user manual]
+- **Code quality:** Tuân thủ PEP 8, có type hints
+- **Documentation:** Code comments
 - **Testing:** [Unit tests coverage > 80%]
 
 ### 6.7. Tương Thích (Compatibility)
@@ -185,21 +177,21 @@
 ## 7. GIAO DIỆN NGƯỜI DÙNG (UI/UX)
 
 ### 7.1. Design Principles
-- 
-- 
+- Thiết kế toát lên vẻ hiện đại
+- Phong cách chủ đạo trắng đen
 - 
 
 ### 7.2. Theme và Styling
-- **Color Scheme:** [Light/Dark/Both]
+- **Color Scheme:** Light [Light/Dark/Both]
 - **Primary Colors:** 
-- **Font:** [Font family và sizes]
+- **Font:** 
 - **Icon Style:** 
 
 ### 7.3. Layout và Navigation
 - **Main Window:** 
 - **Menu Structure:** 
-- **Toolbar:** [Có/Không]
-- **Status Bar:** [Có/Không]
+- **Toolbar:** Có
+- **Status Bar:** Có
 
 ### 7.4. Các Màn Hình Chính (Wireframes/Mockups)
 #### Screen 1: [Tên màn hình]
@@ -331,41 +323,6 @@
 - **Installation method:** [Installer/Portable]
 - **Update mechanism:** [Auto-update/Manual]
 - **Distribution:** [GitHub Releases/Website/etc.]
-
----
-
-## 13. TIMELINE VÀ MILESTONES
-
-### 13.1. Phases
-#### Phase 1: Planning & Design
-- **Duration:** [X weeks]
-- **Deliverables:**
-  - 
-  - 
-
-#### Phase 2: Core Development
-- **Duration:** [X weeks]
-- **Deliverables:**
-  - 
-  - 
-
-#### Phase 3: Testing & Refinement
-- **Duration:** [X weeks]
-- **Deliverables:**
-  - 
-  - 
-
-#### Phase 4: Release & Support
-- **Duration:** [Ongoing]
-- **Deliverables:**
-  - 
-  - 
-
-### 13.2. Key Milestones
-- **M1:** [Milestone name] - [Date]
-- **M2:** [Milestone name] - [Date]
-- **M3:** [Milestone name] - [Date]
-- **M4:** [Release] - [Date]
 
 ---
 
