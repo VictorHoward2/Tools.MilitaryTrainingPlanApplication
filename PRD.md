@@ -1,5 +1,5 @@
 # PRODUCT REQUIREMENTS DOCUMENT (PRD)
-## [Tên Ứng Dụng]
+## Ứng dụng Quản lý Kế hoạch Huấn luyện
 
 ---
 
@@ -91,36 +91,62 @@
 #### FR-001: Nhập môn học
 - **Mô tả:** 
 Một môn học bao gồm các thông tin sau: 
-1. Các bài học
-Mỗi bài học bao gồm: Tên bài học, Thời lượng
-2. Địa điểm học
-3. Yêu cầu: là các môn học cần phải học trước khi học môn này.
-4. Phân loại
+1. Tên môn học
+2. Mã môn học
+3. Các bài học trong môn học
+Mỗi bài học bao gồm: Tên bài học, Thời lượng riêng của mỗi bài học và Tài liệu liên quan
+4. Địa điểm học
+5. Thời lượng mặc định của môn học
+6. Yêu cầu: là các môn học cần phải học trước khi học môn này.
+7. Phân loại
 Một môn học được phân làm 3 loại: Chính trị, Quân sự, Hậu cần kỹ thuật.
 Trong đấy:
 Quân sự lại được phân làm 5 loại: Thông tin, Chiến thuật, Vũ khí, Điều lệnh, Thể lực.
 Hậu cần kỹ thuật lại được phân làm 2 loại: Hậu cần, Kỹ thuật.
-- **Input:** Cho người dùng nhập các thông tin cần thiết của một môn học hoặc nhập từ một file Excel.
+- **Input:** Cho người dùng nhập các thông tin cần thiết của một môn học hoặc nhập từ một file Excel. Có form mẫu Excel để người dùng tham khảo.
+- **Output:** Môn học được lưu lại trên một file json trong hệ thống. 
+- **Business Rules:** Một môn học có tối đa 500 bài học, có thể chọn thời lượng mặc định cho môn học, những bài học nào không có thời lượng riêng thì lấy thời lượng là thời lượng mặc định. Một môn học chỉ có Tên môn học là bắt buộc phải điền. Phần lưu lại thông tin môn học bao gồm 2 phần: đầu tiên là lưu vào một file json tổng hợp tất cả các thông tin cơ bản (tên môn học, địa điểm, thời lượng mặc định, phân loại) của môn học và thứ hai là lưu vào một file json riêng chi tiết của riêng môn học này, các bài học và các thông tin khác của môn học đó. Phần tài liệu liên quan được lưu vào một thư mục riêng, trong đó thư mục đó có các thư mục con là các môn học, trong mỗi thư mục môn học có các thư mục con là các bài học có tài liệu liên quan.
+
+#### FR-002: Quản lý môn học
+- **Mô tả:** Quản lý tất cả các môn học hiện có trong app. Trong trang này, người dùng có thể nhìn thấy danh sách các môn học hiện có. Từ trang này, người dùng có thể thêm, sửa, xóa môn học. 
+- **Business Rules:** Nếu có quá nhiều môn học thì sẽ phân thành trang. Có thể sắp xếp thứ tự các môn học theo tên, theo mã, theo thời gian thêm vào hoặc theo phân loại. Thêm thanh search để tìm kiếm môn học, mỗi lần search sẽ hiển thị có bao nhiêu kết quả khớp. 
+
+#### FR-003: Sửa môn học
+- **Mô tả:** Sửa lại các thông tin của một môn học.
+- **Input:** 
 - **Output:** 
 - **Business Rules:** 
 
-#### FR-002: [Tên Tính Năng]
-- **Mô tả:** 
-- **User Story:** 
-- **Acceptance Criteria:**
-  - 
-  - 
+#### FR-004: Xóa môn học
+- **Mô tả:** Xóa thông tin của một môn học.
+- **Input:** 
+- **Output:** 
+- **Business Rules:** 
+
+#### FR-005: Tạo thời khóa biểu cho một tháng
+- **Mô tả:** Tạo thời khóa biểu huấn luyện trong một tháng. Người dùng chọn ngày bắt đầu (ngày bắt đầu cần phải là ngày thứ Hai) và kết thúc (ngày kết thúc cần phải là ngày Chủ Nhật). Sau đó màn hình sẽ hiển thị 1 trang Thời khóa biểu cho tuần đầu tiên trong khoảng thời gian mà người dùng chọn (1 trang thời khóa biểu chưa có thông tin gì), người dùng sẽ vào đó để lên lịch cho từng ngày trong tuần, sau khi xong 1 tuần sẽ đến tuần tiếp theo. Ví dụ người dùng chọn thứ Hai, sau đó chọn phân loại môn muốn thêm (chính trị, quân sự hay Hậu cần kỹ thuật), sau đó cứ tiếp tục đi vào phân loại nhỏ hơn, cuối cùng lọc ra các môn phù hợp, chọn thêm môn học muốn thêm, chọn bài học cụ thể trong môn (chỉ những bài chưa được lên lịch, những bài học đã được dạy rồi hoặc đã lên lịch không gợi ý nữa), cứ thêm các bài học như thế sao cho phù hợp với yêu cầu.
+
+- **Input:** 
+- **Output:** Lưu lại thời khóa biểu dưới file json. Cách lưu cũng sử dụng 1 file json để lưu tổng quát các thông tin của các thời khóa biểu và 1 file json riêng để lưu chi tiết của 1 thời khóa biểu.
+- **Business Rules:** 
+Các yêu cầu khi tạo thời khóa biểu: Mỗi ngày kế hoạch học tập, huấn luyện cần phải đúng đủ 8 tiếng. Buổi sáng từ 7 giờ tới 11 giờ 30 phút, buổi chiều từ 12 giờ 30 phút tới 16  giờ. 6 ngày một tuần từ thứ Hai tới thứ Bảy. Ngoài ra sẽ có một số tiết học bất biến như: Tiết đầu tiên mỗi thứ Hai hàng tuần là Chào cờ (1 tiếng - 7 giờ - 8 giờ), từ 19h đến 21h mỗi thứ Tư hàng tuần sẽ Hành quân, Thứ Năm đầu tiên trong mỗi tháng sẽ có 1 tiết Văn hóa chính trị tinh thần (1 môn học). 
+Nếu như sau khi người dùng thêm các môn học xong mà không đáp ứng được các yêu cầu nêu trên, tìm kiếm các giải pháp để đề xuất cho người dùng. Nếu chưa đủ 8 tiếng, đề xuất thêm một bài học cụ thể nào đó hoặc đổi một bài học sang bài học có thời lượng dài hơn trong cùng môn để đúng đủ 8 tiếng. Nếu thừa 8 tiếng, đề xuất đổi một bài học sang bài học có thời lượng ngắn hơn trong cùng môn để đúng đủ 8 tiếng.
+
+#### FR-006: Quản lý thời khóa biểu
+- **Mô tả:** Tương tự như quản lý môn học, có thêm sửa xóa các thời khóa biểu.
+- **Input:** 
+- **Output:** 
+- **Business Rules:** 
+
+#### FR-006: Xem thời khóa biểu
+- **Mô tả:** Trình bày thời khóa biểu của một tuần mà người dùng chọn để hiển thị dưới dạng bảng biểu dễ nhìn, hỗ trợ tính năng xuất thành ảnh hoặc pdf hoặc file Excel.
 - **Input:** 
 - **Output:** 
 - **Business Rules:** 
 
 ### 5.2. Tính Năng Ưu Tiên Trung Bình (Should Have - P1)
-#### FR-003: [Tên Tính Năng]
-- **Mô tả:** 
-- **User Story:** 
-- **Acceptance Criteria:**
-  - 
-  - 
+#### FR-007: Theo dõi tiến độ
+- **Mô tả:** Hiển thị lịch sử giảng dạy và kế hoạch giảng dạy những ngày tiếp theo
 
 ### 5.3. Tính Năng Ưu Tiên Thấp (Nice to Have - P2)
 #### FR-004: [Tên Tính Năng]
@@ -209,214 +235,33 @@ Hậu cần kỹ thuật lại được phân làm 2 loại: Hậu cần, Kỹ t
 
 ---
 
-## 8. DỮ LIỆU VÀ LƯU TRỮ
+## 8. XỬ LÝ LỖI VÀ EDGE CASES
 
-### 8.1. Data Model
-#### Entity 1: [Tên Entity]
-- **Mô tả:** 
-- **Attributes:**
-  - [Attribute 1]: [Type] - [Description]
-  - [Attribute 2]: [Type] - [Description]
-- **Relationships:** 
-
-#### Entity 2: [Tên Entity]
-- **Mô tả:** 
-- **Attributes:**
-  - [Attribute 1]: [Type] - [Description]
-  - [Attribute 2]: [Type] - [Description]
-- **Relationships:** 
-
-### 8.2. Database/Storage
-- **Loại lưu trữ:** [SQLite/JSON/CSV/Database server]
-- **Vị trí lưu trữ:** [ví dụ: %APPDATA%/AppName/]
-- **Backup strategy:** 
-- **Migration strategy:** 
-
-### 8.3. Data Import/Export
-- **Import formats:** [CSV, JSON, Excel, etc.]
-- **Export formats:** [CSV, JSON, PDF, Excel, etc.]
-- **Validation rules:** 
-
----
-
-## 9. TÍCH HỢP VÀ API
-
-### 9.1. External Integrations
-#### Integration 1: [Tên Integration]
-- **Mục đích:** 
-- **API/Protocol:** 
-- **Authentication:** 
-- **Rate limits:** 
-
-### 9.2. Internal APIs
-**[Nếu có, mô tả các API nội bộ]**
-
----
-
-## 10. WORKFLOW VÀ BUSINESS LOGIC
-
-### 10.1. User Flows
-#### Flow 1: [Tên Flow]
-1. 
-2. 
-3. 
-4. 
-
-#### Flow 2: [Tên Flow]
-1. 
-2. 
-3. 
-4. 
-
-### 10.2. Business Rules
-- **Rule 1:** 
-- **Rule 2:** 
-- **Rule 3:** 
-
-### 10.3. Validation Rules
-- **Rule 1:** 
-- **Rule 2:** 
-- **Rule 3:** 
-
----
-
-## 11. XỬ LÝ LỖI VÀ EDGE CASES
-
-### 11.1. Error Handling
+### 8.1. Error Handling
 - **Network errors:** 
 - **File I/O errors:** 
 - **Data validation errors:** 
 - **Unexpected errors:** 
 
-### 11.2. Edge Cases
-- **Case 1:** 
-- **Case 2:** 
-- **Case 3:** 
-
-### 11.3. Logging
-- **Log levels:** [DEBUG, INFO, WARNING, ERROR]
-- **Log location:** 
+### 8.2. Logging
+- **Log levels:** DEBUG, INFO, WARNING, ERROR
+- **Log location:** Ghi lại của mỗi ngày chạy ra một file riêng
 - **Log rotation:** 
 
 ---
 
-## 12. YÊU CẦU KỸ THUẬT
+## . YÊU CẦU KỸ THUẬT
 
-### 12.1. Technology Stack
+### 9.1. Technology Stack
 - **Programming Language:** Python [version]
-- **GUI Framework:** [PyQt5/PyQt6/Tkinter/wxPython/Kivy]
-- **Database:** [SQLite/PostgreSQL/MySQL/etc.]
-- **Packaging:** [PyInstaller/cx_Freeze]
+- **GUI Framework:** [PySide6/PyQt6]
+- **Database:**  File JSON 
+- **Packaging:** PyInstaller
 - **Testing Framework:** [pytest/unittest]
 - **Other Libraries:** 
-  - 
-  - 
-
-### 12.2. Development Environment
-- **IDE:** [VS Code/PyCharm/etc.]
-- **Version Control:** Git
-- **Python Version:** [3.9/3.10/3.11/etc.]
-- **Virtual Environment:** venv/conda
-
-### 12.3. Build và Deployment
-- **Build process:** 
-- **Installation method:** [Installer/Portable]
-- **Update mechanism:** [Auto-update/Manual]
-- **Distribution:** [GitHub Releases/Website/etc.]
-
----
-
-## 14. RỦI RO VÀ PHỤ THUỘC
-
-### 14.1. Technical Risks
-| Risk | Impact | Probability | Mitigation |
-|------|--------|-------------|------------|
-| [Risk 1] | High/Medium/Low | High/Medium/Low | |
-| [Risk 2] | High/Medium/Low | High/Medium/Low | |
-
-### 14.2. Dependencies
-- **External dependencies:** 
-- **Third-party services:** 
-- **Resources:** 
-
-### 14.3. Constraints
-- **Time constraints:** 
-- **Budget constraints:** 
-- **Technical constraints:** 
-
----
-
-## 15. TIÊU CHÍ THÀNH CÔNG (Success Criteria)
-
-### 15.1. Key Performance Indicators (KPIs)
-- **KPI 1:** [Mô tả] - Target: [Value]
-- **KPI 2:** [Mô tả] - Target: [Value]
-- **KPI 3:** [Mô tả] - Target: [Value]
-
-### 15.2. Acceptance Criteria
-- [ ] Tất cả tính năng P0 đã được implement
-- [ ] Ứng dụng chạy ổn định trên Windows 10 và 11
-- [ ] Không có critical bugs
-- [ ] User testing đạt điểm > [X]/10
-- [ ] Documentation đã hoàn thành
-
-### 15.3. Definition of Done
-- [ ] Code đã được review
-- [ ] Unit tests đã pass
-- [ ] Integration tests đã pass
-- [ ] Documentation đã được cập nhật
-- [ ] Build thành công
-- [ ] Đã test trên môi trường production-like
-
----
-
-## 16. TÀI LIỆU VÀ TÀI NGUYÊN
-
-### 16.1. Tài Liệu Tham Khảo
-- 
-- 
-- 
-
-### 16.2. Design Resources
-- **Mockups/Wireframes:** [Link hoặc location]
-- **Icons:** [Source]
-- **Images:** [Source]
-
-### 16.3. Technical Documentation
-- **API Documentation:** 
-- **Database Schema:** 
-- **Architecture Diagram:** 
-
----
-
-## 17. PHỤ LỤC
-
-### 17.1. Glossary
-| Term | Definition |
-|------|------------|
-| [Term 1] | |
-| [Term 2] | |
-
-### 17.2. Change Log
-| Date | Version | Changes | Author |
-|------|---------|---------|--------|
-| [Date] | [Version] | [Description] | [Name] |
-
-### 17.3. Approval
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Product Owner | | | |
-| Technical Lead | | | |
-| Stakeholder | | | |
-
----
-
-## GHI CHÚ
-**[Thêm bất kỳ ghi chú hoặc thông tin bổ sung nào khác]**
 
 ---
 
 **Document Version:** 1.0  
-**Last Updated:** [DD/MM/YYYY]  
+**Last Updated:** [09/01/2026]  
 **Next Review Date:** [DD/MM/YYYY]
-
