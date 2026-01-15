@@ -1,0 +1,77 @@
+{
+  "subjects": [
+    {
+      "subject_id": "subject_1768390322.563112",
+      "name": "a",
+      "code": "a",
+      "location": "a",
+      "default_duration": 1.0,
+      "category_main": "QUAN_SU",
+      "category_sub": "CHIEN_THUAT",
+      "lesson_count": 1,
+      "created_at": "2026-01-14T03:32:02.563120",
+      "updated_at": "2026-01-14T03:32:02.563120"
+    },
+    {
+      "subject_id": "subject_1768445042.924662",
+      "name": "B",
+      "code": "B",
+      "location": "b",
+      "default_duration": 1.0,
+      "category_main": "CHINH_TRI",
+      "category_sub": null,
+      "lesson_count": 4,
+      "created_at": "2026-01-14T18:44:02.924669",
+      "updated_at": "2026-01-14T21:15:16.634808"
+    },
+    {
+      "subject_id": "subject_1768445069.000204",
+      "name": "c",
+      "code": "c",
+      "location": "c",
+      "default_duration": 1.0,
+      "category_main": "HAU_CAN_KY_THUAT",
+      "category_sub": "HAU_CAN",
+      "lesson_count": 3,
+      "created_at": "2026-01-14T18:44:29.000211",
+      "updated_at": "2026-01-14T18:44:29.000212"
+    },
+    {
+      "subject_id": "subject_1768457544.240949",
+      "name": "d",
+      "code": "aa",
+      "location": "d",
+      "default_duration": 2.0,
+      "category_main": "QUAN_SU",
+      "category_sub": "THE_LUC",
+      "lesson_count": 2,
+      "created_at": "2026-01-14T22:12:24.240955",
+      "updated_at": "2026-01-14T22:12:24.240956"
+    },
+    {
+      "subject_id": "subject_1768458667.843938",
+      "name": "e",
+      "code": "eeeee",
+      "location": "e",
+      "default_duration": 3.0,
+      "category_main": "CHINH_TRI",
+      "category_sub": null,
+      "lesson_count": 1,
+      "created_at": "2026-01-14T22:31:07.843943",
+      "updated_at": "2026-01-14T22:31:07.843944"
+    },
+    {
+      "subject_id": "subject_1768464179.443558",
+      "name": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "code": "f",
+      "location": "f",
+      "default_duration": 1.0,
+      "category_main": "CHINH_TRI",
+      "category_sub": null,
+      "lesson_count": 1,
+      "created_at": "2026-01-15T00:02:59.443565",
+      "updated_at": "2026-01-15T00:02:59.443565"
+    }
+  ],
+  "updated_at": "2026-01-15T00:03:06.799482"
+}

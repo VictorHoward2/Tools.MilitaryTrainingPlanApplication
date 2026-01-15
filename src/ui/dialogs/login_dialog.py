@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from src.services.auth_service import AuthService
+from src.utils.i18n import tr
 
 
 class LoginDialog(QDialog):
@@ -15,7 +16,7 @@ class LoginDialog(QDialog):
         """Initialize login dialog"""
         super().__init__(parent)
         self.auth_service = auth_service
-        self.setWindowTitle("Đăng nhập")
+        self.setWindowTitle(tr("login_title"))
         self.setModal(True)
         self.setFixedSize(300, 150)
         self.setup_ui()
@@ -26,7 +27,7 @@ class LoginDialog(QDialog):
         
         # Username
         username_layout = QHBoxLayout()
-        username_label = QLabel("Tên đăng nhập:")
+        username_label = QLabel(tr("username_label"))
         self.username_input = QLineEdit()
         username_layout.addWidget(username_label)
         username_layout.addWidget(self.username_input)
@@ -34,7 +35,7 @@ class LoginDialog(QDialog):
         
         # Password
         password_layout = QHBoxLayout()
-        password_label = QLabel("Mật khẩu:")
+        password_label = QLabel(tr("password_label"))
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.Password)
         password_layout.addWidget(password_label)
@@ -43,9 +44,9 @@ class LoginDialog(QDialog):
         
         # Buttons
         button_layout = QHBoxLayout()
-        self.login_button = QPushButton("Đăng nhập")
+        self.login_button = QPushButton(tr("login"))
         self.login_button.clicked.connect(self.handle_login)
-        self.cancel_button = QPushButton("Hủy")
+        self.cancel_button = QPushButton(tr("cancel"))
         self.cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(self.login_button)
         button_layout.addWidget(self.cancel_button)
@@ -63,17 +64,17 @@ class LoginDialog(QDialog):
         password = self.password_input.text()
         
         if not username:
-            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập tên đăng nhập")
+            QMessageBox.warning(self, tr("error"), tr("please_enter_username"))
             return
         
         if not password:
-            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mật khẩu")
+            QMessageBox.warning(self, tr("error"), tr("please_enter_password"))
             return
         
         if self.auth_service.login(username, password):
             self.accept()
         else:
-            QMessageBox.warning(self, "Lỗi đăng nhập", "Tên đăng nhập hoặc mật khẩu không đúng")
+            QMessageBox.warning(self, tr("login_error"), tr("invalid_credentials"))
             self.password_input.clear()
             self.password_input.setFocus()
 

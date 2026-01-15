@@ -25,6 +25,7 @@ class FileService:
         self.schedules_dir = self.base_dir / "schedules"
         self.materials_dir = self.base_dir / "materials"
         self.users_file = self.base_dir / "users.json"
+        self.fixed_subjects_file = self.subjects_dir / "fixed_subjects.json"
         
         # Create directories if they don't exist
         self._ensure_directories()
@@ -159,6 +160,19 @@ class FileService:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"Error updating summary after delete: {e}")
+
+    def load_fixed_subjects(self) -> List[Dict[str, Any]]:
+        """Load fixed subjects definition from JSON"""
+        if not self.fixed_subjects_file.exists():
+            return []
+
+        try:
+            with open(self.fixed_subjects_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get("fixed_subjects", []) or []
+        except Exception as e:
+            print(f"Error loading fixed subjects: {e}")
+            return []
     
     # Schedule operations
     def save_schedule(self, schedule: Schedule) -> bool:

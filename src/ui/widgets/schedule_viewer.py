@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QComboBox, QFileDialog,
-    QMessageBox, QGroupBox
+    QMessageBox, QGroupBox, QHeaderView
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap, QPainter
@@ -11,6 +11,7 @@ from typing import Optional, List
 from src.models.schedule import Schedule
 from src.services.schedule_service import ScheduleService
 from src.services.excel_service import ExcelService
+from src.utils.i18n import tr
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -41,12 +42,12 @@ class ScheduleViewer(QWidget):
         
         # Schedule selection
         selection_layout = QHBoxLayout()
-        selection_layout.addWidget(QLabel("Chọn thời khóa biểu:"))
+        selection_layout.addWidget(QLabel(tr("select_schedule")))
         self.schedule_combo = QComboBox()
         self.schedule_combo.currentIndexChanged.connect(self.on_schedule_changed)
         selection_layout.addWidget(self.schedule_combo)
         
-        self.refresh_btn = QPushButton("Làm mới")
+        self.refresh_btn = QPushButton(tr("refresh_button"))
         self.refresh_btn.clicked.connect(self.load_schedules)
         selection_layout.addWidget(self.refresh_btn)
         selection_layout.addStretch()
@@ -54,7 +55,7 @@ class ScheduleViewer(QWidget):
         
         # Week selection
         week_layout = QHBoxLayout()
-        week_layout.addWidget(QLabel("Chọn tuần:"))
+        week_layout.addWidget(QLabel(tr("select_week")))
         self.week_combo = QComboBox()
         self.week_combo.currentIndexChanged.connect(self.display_week)
         week_layout.addWidget(self.week_combo)
@@ -65,18 +66,21 @@ class ScheduleViewer(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"
+            tr("monday"), tr("tuesday"), tr("wednesday"), 
+            tr("thursday"), tr("friday"), tr("saturday")
         ])
-        self.table.horizontalHeader().setStretchLastSection(True)
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
         
         # Export buttons
         export_layout = QHBoxLayout()
-        self.export_pdf_btn = QPushButton("Xuất PDF")
+        self.export_pdf_btn = QPushButton(tr("export_pdf"))
         self.export_pdf_btn.clicked.connect(self.export_to_pdf)
-        self.export_excel_btn = QPushButton("Xuất Excel")
+        self.export_excel_btn = QPushButton(tr("export_excel"))
         self.export_excel_btn.clicked.connect(self.export_to_excel)
-        self.export_image_btn = QPushButton("Xuất Ảnh")
+        self.export_image_btn = QPushButton(tr("export_image"))
         self.export_image_btn.clicked.connect(self.export_to_image)
         export_layout.addWidget(self.export_pdf_btn)
         export_layout.addWidget(self.export_excel_btn)
@@ -93,7 +97,7 @@ class ScheduleViewer(QWidget):
         schedules = self.schedule_service.get_all_schedules()
         
         for schedule in schedules:
-            name = schedule.name or f"Thời khóa biểu {schedule.start_date}"
+            name = schedule.name or f"{tr('schedule')} {schedule.start_date}"
             self.schedule_combo.addItem(name, schedule)
         
         if schedules:
@@ -144,23 +148,27 @@ class ScheduleViewer(QWidget):
         # Fill table
         for day_index, day in enumerate(week.days):
             for item_index, item in enumerate(day.items):
-                text = f"{item.start_time.strftime('%H:%M')}-{item.end_time.strftime('%H:%M')}\n"
-                text += f"{item.subject_name}\n{item.lesson_name}"
-                if item.location:
-                    text += f"\n📍 {item.location}"
+                text = self._format_item_display(item)
                 
                 table_item = QTableWidgetItem(text)
                 self.table.setItem(item_index, day_index, table_item)
+
+    def _format_item_display(self, item) -> str:
+        """Format schedule item for display."""
+        content = item.subject_name
+        if item.lesson_name and item.lesson_name != item.subject_name:
+            content = f"{item.subject_name}: {item.lesson_name}"
+        return f"{item.start_time.strftime('%H:%M')} - {item.end_time.strftime('%H:%M')}: {content}"
     
     def export_to_pdf(self):
         """Export schedule to PDF"""
         if not self.current_schedule:
-            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn thời khóa biểu")
+            QMessageBox.warning(self, tr("warning"), tr("please_select_schedule"))
             return
         
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Lưu PDF", f"{self.current_schedule.name or 'schedule'}.pdf",
-            "PDF Files (*.pdf)"
+            tr("pdf_files")
         )
         if not file_path:
             return
@@ -199,8 +207,7 @@ class ScheduleViewer(QWidget):
                     for day in week.days:
                         if i < len(day.items):
                             item = day.items[i]
-                            cell_text = f"{item.start_time.strftime('%H:%M')}-{item.end_time.strftime('%H:%M')}\n"
-                            cell_text += f"{item.subject_name}\n{item.lesson_name}"
+                            cell_text = self._format_item_display(item)
                             row.append(cell_text)
                         else:
                             row.append("")
@@ -231,12 +238,12 @@ class ScheduleViewer(QWidget):
     def export_to_excel(self):
         """Export schedule to Excel"""
         if not self.current_schedule:
-            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn thời khóa biểu")
+            QMessageBox.warning(self, tr("warning"), tr("please_select_schedule"))
             return
         
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Lưu Excel", f"{self.current_schedule.name or 'schedule'}.xlsx",
-            "Excel Files (*.xlsx)"
+            tr("excel_files")
         )
         if not file_path:
             return
@@ -262,12 +269,12 @@ class ScheduleViewer(QWidget):
             return
         
         if not self.current_schedule:
-            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn thời khóa biểu")
+            QMessageBox.warning(self, tr("warning"), tr("please_select_schedule"))
             return
         
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Lưu Ảnh", f"{self.current_schedule.name or 'schedule'}.png",
-            "Image Files (*.png *.jpg)"
+            tr("image_files")
         )
         if not file_path:
             return
@@ -276,7 +283,7 @@ class ScheduleViewer(QWidget):
             # Get current week
             week_index = self.week_combo.currentIndex()
             if week_index < 0:
-                QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn tuần")
+                QMessageBox.warning(self, tr("warning"), tr("please_select_week"))
                 return
             
             week = self.week_combo.itemData(week_index)
@@ -314,8 +321,7 @@ class ScheduleViewer(QWidget):
                     draw.rectangle([x, y, x + cell_width, y + cell_height],
                                   outline='black')
                     
-                    text = f"{item.start_time.strftime('%H:%M')}-{item.end_time.strftime('%H:%M')}\n"
-                    text += f"{item.subject_name}\n{item.lesson_name}"
+                    text = self._format_item_display(item)
                     draw.text((x + 5, y + 5), text, fill='black')
             
             img.save(file_path)

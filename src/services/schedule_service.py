@@ -32,6 +32,18 @@ class ScheduleService:
         """Initialize schedule service"""
         self.file_service = file_service or FileService()
         self.subject_service = subject_service or SubjectService(self.file_service)
+        self.fixed_subjects = self.file_service.load_fixed_subjects()
+        self.break_subject_names = {
+            subject.get("name")
+            for subject in self.fixed_subjects
+            if subject.get("is_break")
+        }
+        if not self.fixed_subjects and not self.break_subject_names:
+            self.break_subject_names = {
+                data.get("name")
+                for data in FIXED_SCHEDULE_ITEMS.values()
+                if data.get("is_break")
+            }
     
     def create_schedule(self, start_date: date, end_date: date, name: Optional[str] = None) -> Schedule:
         """Create a new empty schedule with fixed items"""
@@ -83,35 +95,246 @@ class ScheduleService:
     def _add_fixed_items(self, day_schedule: DaySchedule, day_date: date):
         """Add fixed schedule items to a day"""
         day_of_week = DayOfWeek(day_date.weekday())
-        
-        # Chào cờ - Every Monday 7:00-8:00
-        if day_of_week == DayOfWeek.MONDAY:
-            item = ScheduleItem(
-                subject_id="",
-                lesson_id="",
-                subject_name="Chào cờ",
-                lesson_name="Chào cờ",
-                start_time=time(7, 0),
-                end_time=time(8, 0)
-            )
-            day_schedule.items.append(item)
-        
-        # Hành quân - Every Wednesday 19:00-21:00
-        if day_of_week == DayOfWeek.WEDNESDAY:
-            item = ScheduleItem(
-                subject_id="",
-                lesson_id="",
-                subject_name="Hành quân",
-                lesson_name="Hành quân",
-                start_time=time(19, 0),
-                end_time=time(21, 0)
-            )
-            day_schedule.items.append(item)
-        
-        # Văn hóa chính trị tinh thần - First Thursday of month
-        if day_of_week == DayOfWeek.THURSDAY and is_first_thursday_of_month(day_date):
-            # Will be scheduled during normal hours
-            pass
+
+        for subject in self._get_fixed_subjects():
+            if not self._should_add_fixed_subject(subject, day_date, day_of_week):
+                continue
+
+            for time_range in subject.get("time_ranges", []):
+                start_time = self._parse_time_str(time_range.get("start"))
+                end_time = self._parse_time_str(time_range.get("end"))
+                if not start_time or not end_time:
+                    continue
+
+                item = ScheduleItem(
+                    subject_id="",
+                    lesson_id="",
+                    subject_name=subject.get("name", "Môn học"),
+                    lesson_name=subject.get("name", "Môn học"),
+                    start_time=start_time,
+                    end_time=end_time
+                )
+                self._insert_item_sorted(day_schedule.items, item)
+
+    def _get_fixed_subjects(self) -> List[Dict]:
+        """Get fixed subjects configuration (from file or fallback constants)."""
+        if self.fixed_subjects:
+            return self.fixed_subjects
+
+        fallback_subjects = []
+        for data in FIXED_SCHEDULE_ITEMS.values():
+            day = data.get("day")
+            time_ranges = data.get("time_ranges")
+            if not time_ranges and data.get("start_time") and data.get("end_time"):
+                time_ranges = [
+                    {
+                        "start": data["start_time"].strftime("%H:%M"),
+                        "end": data["end_time"].strftime("%H:%M")
+                    }
+                ]
+            elif time_ranges:
+                time_ranges = [
+                    {
+                        "start": tr["start"].strftime("%H:%M"),
+                        "end": tr["end"].strftime("%H:%M")
+                    }
+                    for tr in time_ranges
+                ]
+
+            fallback_subjects.append({
+                "name": data.get("name", "Môn học"),
+                "rule": "daily" if data.get("daily") else "weekly",
+                "day_of_week": day.name if day else None,
+                "first_thursday_of_month": data.get("first_thursday_of_month", False),
+                "time_ranges": time_ranges or [],
+                "is_break": data.get("is_break", False)
+            })
+
+        return fallback_subjects
+
+    def _should_add_fixed_subject(self, subject: Dict, day_date: date, day_of_week: DayOfWeek) -> bool:
+        """Check if a fixed subject should be added for a specific date."""
+        rule = (subject.get("rule") or "weekly").lower()
+        if rule != "daily":
+            day_value = subject.get("day_of_week")
+            if day_value is None:
+                return False
+            try:
+                if isinstance(day_value, int):
+                    expected_day = DayOfWeek(day_value)
+                else:
+                    expected_day = DayOfWeek[str(day_value)]
+            except Exception:
+                return False
+            if expected_day != day_of_week:
+                return False
+
+        if subject.get("first_thursday_of_month") and not is_first_thursday_of_month(day_date):
+            return False
+        return True
+
+    def _parse_time_str(self, value: Optional[str]) -> Optional[time]:
+        """Parse time from HH:MM string."""
+        if not value:
+            return None
+        try:
+            return time.fromisoformat(value)
+        except ValueError:
+            return None
+
+    def set_day_subjects(self, schedule: Schedule, week_num: int, day_index: int,
+                         subject_ids: List[str]) -> Tuple[bool, Optional[str]]:
+        """Set ordered subject list for a day"""
+        if week_num < 1 or week_num > len(schedule.weeks):
+            return False, "Số tuần không hợp lệ"
+        week = schedule.weeks[week_num - 1]
+        if day_index < 0 or day_index >= len(week.days):
+            return False, "Chỉ số ngày không hợp lệ"
+
+        seen = set()
+        ordered = []
+        for subject_id in subject_ids:
+            if subject_id and subject_id not in seen:
+                ordered.append(subject_id)
+                seen.add(subject_id)
+
+        day = week.days[day_index]
+        day.selected_subject_ids = ordered
+        day.subject_time_slots = {
+            subject_id: time_str
+            for subject_id, time_str in day.subject_time_slots.items()
+            if subject_id in seen
+        }
+        day.subject_lesson_map = {
+            subject_id: lesson_id
+            for subject_id, lesson_id in day.subject_lesson_map.items()
+            if subject_id in seen
+        }
+        return True, None
+
+    def set_day_subject_time(self, schedule: Schedule, week_num: int, day_index: int,
+                             subject_id: str, start_time: Optional[time]) -> Tuple[bool, Optional[str]]:
+        """Set start time for a subject in a day"""
+        if week_num < 1 or week_num > len(schedule.weeks):
+            return False, "Số tuần không hợp lệ"
+        week = schedule.weeks[week_num - 1]
+        if day_index < 0 or day_index >= len(week.days):
+            return False, "Chỉ số ngày không hợp lệ"
+        if not subject_id:
+            return False, "Môn học không hợp lệ"
+
+        day = week.days[day_index]
+        if subject_id not in day.selected_subject_ids:
+            return False, "Môn học chưa được chọn trong ngày"
+
+        if start_time is None:
+            day.subject_time_slots.pop(subject_id, None)
+        else:
+            day.subject_time_slots[subject_id] = start_time.strftime("%H:%M")
+        return True, None
+
+    def set_day_subject_lesson(self, schedule: Schedule, week_num: int, day_index: int,
+                               subject_id: str, lesson_id: str) -> Tuple[bool, Optional[str]]:
+        """Set lesson for a subject in a day"""
+        if week_num < 1 or week_num > len(schedule.weeks):
+            return False, "Số tuần không hợp lệ"
+        week = schedule.weeks[week_num - 1]
+        if day_index < 0 or day_index >= len(week.days):
+            return False, "Chỉ số ngày không hợp lệ"
+        if not subject_id:
+            return False, "Môn học không hợp lệ"
+
+        day = week.days[day_index]
+        if subject_id not in day.selected_subject_ids:
+            return False, "Môn học chưa được chọn trong ngày"
+
+        if not lesson_id:
+            day.subject_lesson_map.pop(subject_id, None)
+        else:
+            day.subject_lesson_map[subject_id] = lesson_id
+        return True, None
+
+    def copy_week_subjects_and_times(self, schedule: Schedule, from_week_num: int,
+                                     to_week_num: int) -> Tuple[bool, Optional[str]]:
+        """Copy subject order and time slots from previous week"""
+        if from_week_num < 1 or from_week_num > len(schedule.weeks):
+            return False, "Số tuần nguồn không hợp lệ"
+        if to_week_num < 1 or to_week_num > len(schedule.weeks):
+            return False, "Số tuần đích không hợp lệ"
+
+        from_week = schedule.weeks[from_week_num - 1]
+        to_week = schedule.weeks[to_week_num - 1]
+
+        for day_index, from_day in enumerate(from_week.days):
+            if day_index >= len(to_week.days):
+                break
+            to_day = to_week.days[day_index]
+            to_day.selected_subject_ids = list(from_day.selected_subject_ids)
+            to_day.subject_time_slots = dict(from_day.subject_time_slots)
+            to_day.subject_lesson_map = {}
+        return True, None
+
+    def build_week_items(self, schedule: Schedule, week_num: int) -> Tuple[bool, Optional[str]]:
+        """Build schedule items for a week based on selected subjects, times, and lessons"""
+        if week_num < 1 or week_num > len(schedule.weeks):
+            return False, "Số tuần không hợp lệ"
+
+        week = schedule.weeks[week_num - 1]
+        errors = []
+
+        for day in week.days:
+            fixed_items = [item for item in day.items if not item.subject_id and not item.lesson_id]
+            new_items = list(fixed_items)
+
+            for subject_id in day.selected_subject_ids:
+                subject = self.subject_service.get_subject(subject_id)
+                if not subject:
+                    errors.append(f"{day.date}: Không tìm thấy môn học")
+                    continue
+
+                lesson_id = day.subject_lesson_map.get(subject_id)
+                if not lesson_id:
+                    errors.append(f"{day.date}: Chưa chọn bài học cho môn {subject.name}")
+                    continue
+
+                lesson = next((l for l in subject.lessons if l.lesson_id == lesson_id), None)
+                if not lesson:
+                    errors.append(f"{day.date}: Bài học không hợp lệ cho môn {subject.name}")
+                    continue
+
+                time_str = day.subject_time_slots.get(subject_id)
+                if not time_str:
+                    errors.append(f"{day.date}: Chưa chọn giờ cho môn {subject.name}")
+                    continue
+
+                start_time = time.fromisoformat(time_str)
+                duration = subject.get_lesson_duration(lesson)
+                end_time = add_hours_to_time(start_time, duration)
+
+                conflict = self._check_time_conflict_items(new_items, start_time, end_time)
+                if conflict:
+                    errors.append(f"{day.date}: Xung đột thời gian với {conflict}")
+                    continue
+
+                item = ScheduleItem(
+                    subject_id=subject.subject_id,
+                    lesson_id=lesson.lesson_id,
+                    subject_name=subject.name,
+                    lesson_name=lesson.name,
+                    start_time=start_time,
+                    end_time=end_time,
+                    location=subject.location
+                )
+                self._insert_item_sorted(new_items, item)
+
+            day.items = new_items
+
+        if errors:
+            return False, "\n".join(errors)
+
+        from datetime import datetime
+        schedule.updated_at = datetime.now()
+        return True, None
     
     def add_lesson_to_day(self, schedule: Schedule, week_num: int, day_index: int,
                          subject: Subject, lesson: Lesson, 
@@ -167,8 +390,11 @@ class ScheduleService:
     
     def _check_time_conflict(self, day: DaySchedule, start: time, end: time) -> Optional[str]:
         """Check if time conflicts with existing items"""
-        for item in day.items:
-            # Check overlap
+        return self._check_time_conflict_items(day.items, start, end)
+    
+    def _check_time_conflict_items(self, items: List[ScheduleItem], start: time, end: time) -> Optional[str]:
+        """Check if time conflicts with existing items list"""
+        for item in items:
             if not (end <= item.start_time or start >= item.end_time):
                 return f"{item.subject_name} - {item.lesson_name}"
         return None
@@ -214,6 +440,12 @@ class ScheduleService:
         afternoon_hours = 0.0
         
         for item in day.items:
+            if (
+                not item.subject_id
+                and not item.lesson_id
+                and item.subject_name in self.break_subject_names
+            ):
+                continue
             # Skip fixed items outside normal hours
             if item.start_time < SCHEDULE_MORNING_START or item.end_time > SCHEDULE_AFTERNOON_END:
                 continue

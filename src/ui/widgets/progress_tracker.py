@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QComboBox, QGroupBox,
-    QCalendarWidget, QMessageBox, QCheckBox
+    QCalendarWidget, QMessageBox, QCheckBox, QHeaderView
 )
 from PySide6.QtCore import Qt, QDate, Signal
 from datetime import date, datetime
@@ -85,6 +85,13 @@ class ProgressTracker(QWidget):
         filter_layout.addWidget(self.show_completed_check)
         filter_layout.addWidget(self.show_pending_check)
         filter_layout.addStretch()
+        
+        # Button to mark all past dates as completed
+        self.mark_all_past_complete_btn = QPushButton("Đánh dấu tất cả ngày quá khứ")
+        self.mark_all_past_complete_btn.clicked.connect(self.mark_all_past_dates_complete)
+        self.mark_all_past_complete_btn.setEnabled(False)
+        filter_layout.addWidget(self.mark_all_past_complete_btn)
+        
         right_layout.addLayout(filter_layout)
         
         # Progress table
@@ -93,7 +100,9 @@ class ProgressTracker(QWidget):
         self.progress_table.setHorizontalHeaderLabels([
             "Ngày", "Thời gian", "Môn học", "Bài học", "Trạng thái"
         ])
-        self.progress_table.horizontalHeader().setStretchLastSection(True)
+        header = self.progress_table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.Stretch)
         right_layout.addWidget(self.progress_table)
         
         main_layout.addLayout(right_layout, 2)
@@ -123,6 +132,9 @@ class ProgressTracker(QWidget):
             self.update_calendar()
             self.update_today_schedule()
             self.update_progress_table()
+            self.mark_all_past_complete_btn.setEnabled(True)
+        else:
+            self.mark_all_past_complete_btn.setEnabled(False)
     
     def update_calendar(self):
         """Update calendar with schedule dates"""
@@ -303,4 +315,40 @@ class ProgressTracker(QWidget):
             else:
                 status_item.setForeground(Qt.red)
             self.progress_table.setItem(row, 4, status_item)
+    
+    def mark_all_past_dates_complete(self):
+        """Mark all past dates as completed"""
+        if not self.current_schedule:
+            return
+        
+        today = date.today()
+        marked_count = 0
+        
+        # Iterate through all weeks and days
+        for week in self.current_schedule.weeks:
+            for day in week.days:
+                # Check if date is in the past and not already completed
+                if day.date < today and not day.is_completed:
+                    day.is_completed = True
+                    marked_count += 1
+        
+        if marked_count == 0:
+            QMessageBox.information(
+                self, "Thông tin", 
+                "Không có ngày quá khứ nào cần đánh dấu hoàn thành"
+            )
+            return
+        
+        # Save schedule
+        success, error = self.schedule_service.save_schedule(self.current_schedule)
+        if success:
+            QMessageBox.information(
+                self, "Thành công", 
+                f"Đã đánh dấu {marked_count} ngày quá khứ là hoàn thành"
+            )
+            self.update_calendar()
+            self.update_today_schedule()
+            self.update_progress_table()
+        else:
+            QMessageBox.warning(self, "Lỗi", error or "Không thể lưu")
 

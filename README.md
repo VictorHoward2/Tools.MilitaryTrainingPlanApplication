@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ## Chạy ứng dụng
 
 ```bash
-python -m src.main
+python src/main.py
 ```
 
 ## Đóng gói

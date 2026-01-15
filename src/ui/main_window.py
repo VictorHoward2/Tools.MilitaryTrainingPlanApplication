@@ -17,7 +17,7 @@ from src.ui.widgets.schedule_creator import ScheduleCreator
 from src.ui.widgets.schedule_viewer import ScheduleViewer
 from src.ui.widgets.progress_tracker import ProgressTracker
 from src.utils.logger import setup_logger
-from src.utils.i18n import tr
+from src.utils.i18n import tr, set_language, get_language, SUPPORTED_LANGUAGES
 
 logger = setup_logger()
 
@@ -39,6 +39,9 @@ class MainWindow(QMainWindow):
         if not self.check_authentication():
             self.close()
             return
+        
+        # Store menu actions for language updates
+        self.menu_actions = {}
         
         self.setup_ui()
         self.setup_menu()
@@ -117,88 +120,123 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
         
         # File menu
-        file_menu = menubar.addMenu("&File")
+        file_menu = menubar.addMenu(tr("file_menu"))
+        self.menu_actions['file_menu'] = file_menu
         
-        logout_action = QAction("&Logout", self)
+        logout_action = QAction(tr("logout"), self)
         logout_action.setShortcut("Ctrl+L")
         logout_action.triggered.connect(self.logout)
         file_menu.addAction(logout_action)
+        self.menu_actions['logout'] = logout_action
         
-        exit_action = QAction("E&xit", self)
+        exit_action = QAction(tr("exit"), self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+        self.menu_actions['exit'] = exit_action
         
         # View menu
-        view_menu = menubar.addMenu("&View")
+        view_menu = menubar.addMenu(tr("view_menu"))
+        self.menu_actions['view_menu'] = view_menu
         
-        subjects_action = QAction("&Subjects", self)
+        subjects_action = QAction(tr("subjects"), self)
         subjects_action.setShortcut("Ctrl+1")
         subjects_action.triggered.connect(lambda: self.show_view(0))
         view_menu.addAction(subjects_action)
+        self.menu_actions['subjects'] = subjects_action
         
-        create_schedule_action = QAction("&Create Schedule", self)
+        create_schedule_action = QAction(tr("create_schedule"), self)
         create_schedule_action.setShortcut("Ctrl+2")
         create_schedule_action.triggered.connect(lambda: self.show_view(1))
         view_menu.addAction(create_schedule_action)
+        self.menu_actions['create_schedule'] = create_schedule_action
         
-        view_schedule_action = QAction("&View Schedule", self)
+        view_schedule_action = QAction(tr("view_schedule"), self)
         view_schedule_action.setShortcut("Ctrl+3")
         view_schedule_action.triggered.connect(lambda: self.show_view(2))
         view_menu.addAction(view_schedule_action)
+        self.menu_actions['view_schedule'] = view_schedule_action
         
-        progress_action = QAction("&Progress", self)
+        progress_action = QAction(tr("progress"), self)
         progress_action.setShortcut("Ctrl+4")
         progress_action.triggered.connect(lambda: self.show_view(3))
         view_menu.addAction(progress_action)
+        self.menu_actions['progress'] = progress_action
+        
+        # Language menu
+        language_menu = menubar.addMenu(tr("language"))
+        self.menu_actions['language_menu'] = language_menu
+        
+        vi_action = QAction(tr("language_vietnamese"), self)
+        vi_action.setCheckable(True)
+        vi_action.setChecked(get_language() == "vi")
+        vi_action.triggered.connect(lambda: self.change_language("vi"))
+        language_menu.addAction(vi_action)
+        self.menu_actions['vi'] = vi_action
+        
+        en_action = QAction(tr("language_english"), self)
+        en_action.setCheckable(True)
+        en_action.setChecked(get_language() == "en")
+        en_action.triggered.connect(lambda: self.change_language("en"))
+        language_menu.addAction(en_action)
+        self.menu_actions['en'] = en_action
         
         # Help menu
-        help_menu = menubar.addMenu("&Help")
+        help_menu = menubar.addMenu(tr("help_menu"))
+        self.menu_actions['help_menu'] = help_menu
         
-        about_action = QAction("&About", self)
+        about_action = QAction(tr("about"), self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
+        self.menu_actions['about'] = about_action
     
     def setup_toolbar(self):
         """Setup toolbar"""
-        toolbar = QToolBar("Main Toolbar")
+        toolbar = QToolBar(tr("app_name"))
         self.addToolBar(toolbar)
+        self.toolbar = toolbar
         
         # View actions
-        subjects_action = QAction("Subjects", self)
+        subjects_action = QAction(tr("subjects"), self)
         subjects_action.triggered.connect(lambda: self.show_view(0))
         toolbar.addAction(subjects_action)
+        self.menu_actions['toolbar_subjects'] = subjects_action
         
-        create_schedule_action = QAction("Create Schedule", self)
+        create_schedule_action = QAction(tr("create_schedule"), self)
         create_schedule_action.triggered.connect(lambda: self.show_view(1))
         toolbar.addAction(create_schedule_action)
+        self.menu_actions['toolbar_create_schedule'] = create_schedule_action
         
-        view_schedule_action = QAction("View Schedule", self)
+        view_schedule_action = QAction(tr("view_schedule"), self)
         view_schedule_action.triggered.connect(lambda: self.show_view(2))
         toolbar.addAction(view_schedule_action)
+        self.menu_actions['toolbar_view_schedule'] = view_schedule_action
         
-        progress_action = QAction("Progress", self)
+        progress_action = QAction(tr("progress"), self)
         progress_action.triggered.connect(lambda: self.show_view(3))
         toolbar.addAction(progress_action)
+        self.menu_actions['toolbar_progress'] = progress_action
         
         toolbar.addSeparator()
         
         # Refresh action
-        refresh_action = QAction("Refresh", self)
+        refresh_action = QAction(tr("refresh"), self)
         refresh_action.triggered.connect(self.refresh_current_view)
         toolbar.addAction(refresh_action)
+        self.menu_actions['toolbar_refresh'] = refresh_action
     
     def setup_statusbar(self):
         """Setup status bar"""
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage(tr("ready"))
         
         # Show current user
         user = self.auth_service.get_current_user()
         if user:
-            user_text = f"User: {user.username}"
+            user_text = f"{tr('user')}: {user.username}"
             if user.full_name:
                 user_text += f" ({user.full_name})"
-            self.statusBar().addPermanentWidget(QLabel(user_text))
+            self.user_label = QLabel(user_text)
+            self.statusBar().addPermanentWidget(self.user_label)
     
     def show_view(self, index: int):
         """Show view by index"""
@@ -206,9 +244,9 @@ class MainWindow(QMainWindow):
             self.stacked_widget.setCurrentIndex(index)
             
             # Update status
-            view_names = ["Subjects", "Create Schedule", "View Schedule", "Progress"]
+            view_names = [tr("subjects"), tr("create_schedule"), tr("view_schedule"), tr("progress")]
             if index < len(view_names):
-                self.statusBar().showMessage(f"View: {view_names[index]}")
+                self.statusBar().showMessage(f"{tr('view')}: {view_names[index]}")
     
     def refresh_current_view(self):
         """Refresh current view"""
@@ -221,19 +259,19 @@ class MainWindow(QMainWindow):
         elif isinstance(current_widget, ProgressTracker):
             current_widget.load_schedules()
         
-        self.statusBar().showMessage("Refreshed", 2000)
+        self.statusBar().showMessage(tr("refreshed"), 2000)
     
     def on_schedule_created(self, schedule):
         """Handle schedule created"""
         # Switch to schedule viewer and refresh
         self.show_view(2)
         self.schedule_viewer.load_schedules()
-        self.statusBar().showMessage("Schedule created successfully", 3000)
+        self.statusBar().showMessage(tr("schedule_created_successfully"), 3000)
     
     def logout(self):
         """Logout user"""
         reply = QMessageBox.question(
-            self, "Logout", "Bạn có chắc chắn muốn đăng xuất?",
+            self, tr("logout"), tr("confirm_logout"),
             QMessageBox.Yes | QMessageBox.No
         )
         
@@ -250,17 +288,96 @@ class MainWindow(QMainWindow):
     def show_about(self):
         """Show about dialog"""
         QMessageBox.about(
-            self, "About",
+            self, tr("about"),
             f"{tr('app_name')}\n\n"
-            f"Version: 1.0.0\n"
-            f"Author: Victor Howard\n\n"
-            f"Ứng dụng hỗ trợ giảng viên quân đội quản lý các môn học và thời khóa biểu."
+            f"{tr('about_version')}\n"
+            f"{tr('about_author')}\n\n"
+            f"{tr('about_text')}"
         )
+    
+    def change_language(self, language: str):
+        """Change application language"""
+        if language in SUPPORTED_LANGUAGES:
+            set_language(language)
+            self.update_ui_language()
+    
+    def update_ui_language(self):
+        """Update all UI text to current language"""
+        # Update window title
+        self.setWindowTitle(tr("app_name"))
+        
+        # Update menu bar
+        if hasattr(self, 'menu_actions'):
+            if 'file_menu' in self.menu_actions:
+                self.menu_actions['file_menu'].setTitle(tr("file_menu"))
+            if 'logout' in self.menu_actions:
+                self.menu_actions['logout'].setText(tr("logout"))
+            if 'exit' in self.menu_actions:
+                self.menu_actions['exit'].setText(tr("exit"))
+            if 'view_menu' in self.menu_actions:
+                self.menu_actions['view_menu'].setTitle(tr("view_menu"))
+            if 'subjects' in self.menu_actions:
+                self.menu_actions['subjects'].setText(tr("subjects"))
+            if 'create_schedule' in self.menu_actions:
+                self.menu_actions['create_schedule'].setText(tr("create_schedule"))
+            if 'view_schedule' in self.menu_actions:
+                self.menu_actions['view_schedule'].setText(tr("view_schedule"))
+            if 'progress' in self.menu_actions:
+                self.menu_actions['progress'].setText(tr("progress"))
+            if 'language_menu' in self.menu_actions:
+                self.menu_actions['language_menu'].setTitle(tr("language"))
+            if 'vi' in self.menu_actions:
+                self.menu_actions['vi'].setText(tr("language_vietnamese"))
+                self.menu_actions['vi'].setChecked(get_language() == "vi")
+            if 'en' in self.menu_actions:
+                self.menu_actions['en'].setText(tr("language_english"))
+                self.menu_actions['en'].setChecked(get_language() == "en")
+            if 'help_menu' in self.menu_actions:
+                self.menu_actions['help_menu'].setTitle(tr("help_menu"))
+            if 'about' in self.menu_actions:
+                self.menu_actions['about'].setText(tr("about"))
+            if 'toolbar_subjects' in self.menu_actions:
+                self.menu_actions['toolbar_subjects'].setText(tr("subjects"))
+            if 'toolbar_create_schedule' in self.menu_actions:
+                self.menu_actions['toolbar_create_schedule'].setText(tr("create_schedule"))
+            if 'toolbar_view_schedule' in self.menu_actions:
+                self.menu_actions['toolbar_view_schedule'].setText(tr("view_schedule"))
+            if 'toolbar_progress' in self.menu_actions:
+                self.menu_actions['toolbar_progress'].setText(tr("progress"))
+            if 'toolbar_refresh' in self.menu_actions:
+                self.menu_actions['toolbar_refresh'].setText(tr("refresh"))
+        
+        # Update status bar
+        self.statusBar().showMessage(tr("ready"))
+        if hasattr(self, 'user_label'):
+            user = self.auth_service.get_current_user()
+            if user:
+                user_text = f"{tr('user')}: {user.username}"
+                if user.full_name:
+                    user_text += f" ({user.full_name})"
+                self.user_label.setText(user_text)
+        
+        # Update current view status
+        current_index = self.stacked_widget.currentIndex()
+        if current_index >= 0:
+            view_names = [tr("subjects"), tr("create_schedule"), tr("view_schedule"), tr("progress")]
+            if current_index < len(view_names):
+                self.statusBar().showMessage(f"{tr('view')}: {view_names[current_index]}")
+        
+        # Update child widgets - they should reload their UI
+        if hasattr(self, 'subject_manager') and hasattr(self.subject_manager, 'update_ui_language'):
+            self.subject_manager.update_ui_language()
+        elif hasattr(self, 'subject_manager'):
+            self.subject_manager.load_subjects()
+        if hasattr(self, 'schedule_viewer'):
+            self.schedule_viewer.load_schedules()
+        if hasattr(self, 'progress_tracker'):
+            self.progress_tracker.load_schedules()
     
     def closeEvent(self, event):
         """Handle close event"""
         reply = QMessageBox.question(
-            self, "Exit", "Bạn có chắc chắn muốn thoát?",
+            self, tr("exit"), tr("confirm_exit"),
             QMessageBox.Yes | QMessageBox.No
         )
         

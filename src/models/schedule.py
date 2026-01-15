@@ -62,6 +62,9 @@ class DaySchedule:
     date: date
     items: List[ScheduleItem] = field(default_factory=list)
     is_completed: bool = False
+    selected_subject_ids: List[str] = field(default_factory=list)
+    subject_time_slots: Dict[str, str] = field(default_factory=dict)
+    subject_lesson_map: Dict[str, str] = field(default_factory=dict)
     
     def to_dict(self) -> dict:
         """Convert to dictionary"""
@@ -69,6 +72,9 @@ class DaySchedule:
             "date": self.date.isoformat(),
             "items": [item.to_dict() for item in self.items],
             "is_completed": self.is_completed,
+            "selected_subject_ids": list(self.selected_subject_ids),
+            "subject_time_slots": dict(self.subject_time_slots),
+            "subject_lesson_map": dict(self.subject_lesson_map),
         }
     
     @classmethod
@@ -78,6 +84,9 @@ class DaySchedule:
             date=date.fromisoformat(data["date"]),
             items=[ScheduleItem.from_dict(item_data) for item_data in data.get("items", [])],
             is_completed=data.get("is_completed", False),
+            selected_subject_ids=data.get("selected_subject_ids", []) or [],
+            subject_time_slots=data.get("subject_time_slots", {}) or {},
+            subject_lesson_map=data.get("subject_lesson_map", {}) or {},
         )
 
 

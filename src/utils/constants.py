@@ -66,10 +66,29 @@ FIXED_SCHEDULE_ITEMS = {
     "VAN_HOA_CHINH_TRI": {
         "name": "Văn hóa chính trị tinh thần",
         "day": DayOfWeek.THURSDAY,
-        "start_time": None,  # Will be determined
+        "start_time": None,  # Use time_ranges
         "end_time": None,
-        "duration": 1.0,
+        "duration": 8.0,
+        "time_ranges": [
+            {
+                "start": time(7, 0),
+                "end": time(11, 30)
+            },
+            {
+                "start": time(12, 30),
+                "end": time(16, 0)
+            }
+        ],
         "first_thursday_of_month": True
+    },
+    "NGHI_TRUA": {
+        "name": "Nghỉ trưa",
+        "day": None,
+        "start_time": time(11, 30),
+        "end_time": time(12, 30),
+        "duration": 1.0,
+        "daily": True,
+        "is_break": True
     }
 }
 
