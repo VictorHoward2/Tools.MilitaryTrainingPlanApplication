@@ -1,0 +1,29 @@
+{
+  "subjects": [
+    {
+      "subject_id": "subject_1767975936.858852",
+      "name": "A",
+      "code": "Aaa",
+      "location": "dfg",
+      "default_duration": 2.0,
+      "category_main": "QUAN_SU",
+      "category_sub": "CHIEN_THUAT",
+      "lesson_count": 1,
+      "created_at": "2026-01-09T23:25:36.858852",
+      "updated_at": "2026-01-09T23:25:36.858852"
+    },
+    {
+      "subject_id": "subject_1767975969.987681",
+      "name": "B",
+      "code": "BB",
+      "location": "BBB",
+      "default_duration": 4.0,
+      "category_main": "CHINH_TRI",
+      "category_sub": null,
+      "lesson_count": 1,
+      "created_at": "2026-01-09T23:26:09.987681",
+      "updated_at": "2026-01-09T23:26:09.987681"
+    }
+  ],
+  "updated_at": "2026-01-09T23:26:09.988723"
+}

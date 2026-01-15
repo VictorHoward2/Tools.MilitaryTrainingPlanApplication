@@ -16,28 +16,43 @@ from src.utils.logger import setup_logger
 logger = setup_logger()
 
 
+def get_base_path():
+    """Get the base path for resources (works with both source and PyInstaller builds)"""
+    # Check if running as PyInstaller executable
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # Running as compiled exe
+        return Path(sys._MEIPASS)
+    else:
+        # Running as source code
+        return Path(__file__).parent.parent
+
+
 def main():
     """Main function"""
     app = QApplication(sys.argv)
     app.setApplicationName("Military Training Plan")
     app.setOrganizationName("Military Training")
     
+    # Get base path for resources
+    base_path = get_base_path()
+    
     # Set application icon
     try:
-        base_path = Path(__file__).parent.parent
         icon_path = base_path / "resources" / "icons" / "logo.jpg"
         if not icon_path.exists():
+            # Try alternative path
             icon_path = base_path / "logo.jpg"
         if icon_path.exists():
             app.setWindowIcon(QIcon(str(icon_path)))
             logger.info(f"Application icon set from: {icon_path}")
+        else:
+            logger.warning(f"Icon not found at: {base_path / 'resources' / 'icons' / 'logo.jpg'}")
     except Exception as e:
         logger.warning(f"Could not set application icon: {e}")
     
     # Show splash screen
     splash = None
     try:
-        base_path = Path(__file__).parent.parent
         logo_path = base_path / "resources" / "icons" / "logo.jpg"
         if not logo_path.exists():
             logo_path = base_path / "logo.jpg"
