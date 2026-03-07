@@ -36,7 +36,7 @@ python src/main.py
 ## Tính năng chính
 
 1. **Quản lý môn học**: Thêm, sửa, xóa môn học và bài học
-2. **Tạo thời khóa biểu**: Tạo thời khóa biểu theo tuần/tháng
+2. **Tạo kế hoạch huấn luyện**: Tạo kế hoạch huấn luyện (thời khóa biểu) theo tuần/tháng
 3. **Xem thời khóa biểu**: Xem và xuất thời khóa biểu ra PDF/Excel/Image
 4. **Theo dõi tiến độ**: Đánh dấu bài đã dạy và xem lịch sử
 

@@ -1,7 +1,7 @@
 """Schedule model"""
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from datetime import datetime, date, time
 from enum import Enum
 
@@ -55,38 +55,89 @@ class ScheduleItem:
         )
 
 
+def _normalize_to_list(value: Union[str, List[str], None]) -> List[str]:
+    """Convert legacy single value to list for multi-lesson-per-day support."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value] if value else []
+    return list(value) if value else []
+
+
+def _normalize_duration_list(value: Optional[List], length: int) -> List[Optional[float]]:
+    """Return list of optional float (duration in hours per slot). None = use full lesson duration."""
+    if value is None or not isinstance(value, list):
+        return [None] * length
+    return list(value) + [None] * (length - len(value)) if len(value) < length else value[:length]
+
+
 @dataclass
 class DaySchedule:
-    """Represents schedule for a single day"""
-    
+    """Represents schedule for a single day.
+    subject_lesson_map: subject_id -> list of lesson_id (one or more per subject).
+    subject_time_slots: subject_id -> list of "HH:MM" start times (same order as lessons).
+    subject_slot_durations: optional subject_id -> list of float (hours per slot); None at index = use full lesson duration. Used for split lessons (same lesson in morning + afternoon).
+    """
+
     date: date
     items: List[ScheduleItem] = field(default_factory=list)
     is_completed: bool = False
     selected_subject_ids: List[str] = field(default_factory=list)
-    subject_time_slots: Dict[str, str] = field(default_factory=dict)
-    subject_lesson_map: Dict[str, str] = field(default_factory=dict)
-    
+    subject_time_slots: Dict[str, List[str]] = field(default_factory=dict)
+    subject_lesson_map: Dict[str, List[str]] = field(default_factory=dict)
+    subject_slot_durations: Dict[str, List[Optional[float]]] = field(default_factory=dict)
+
+    def get_lesson_ids(self, subject_id: str) -> List[str]:
+        """Return list of lesson_ids for this subject (never None)."""
+        return _normalize_to_list(self.subject_lesson_map.get(subject_id))
+
+    def get_time_slots(self, subject_id: str) -> List[str]:
+        """Return list of start time strings for this subject (never None)."""
+        return _normalize_to_list(self.subject_time_slots.get(subject_id))
+
+    def get_slot_duration(self, subject_id: str, slot_index: int) -> Optional[float]:
+        """Return duration in hours for this slot if set (for split lessons); else None = use full lesson duration."""
+        lst = self.subject_slot_durations.get(subject_id)
+        if not lst or slot_index >= len(lst):
+            return None
+        return lst[slot_index]
+
     def to_dict(self) -> dict:
-        """Convert to dictionary"""
+        """Convert to dictionary. Always serializes slots/map as lists."""
         return {
             "date": self.date.isoformat(),
             "items": [item.to_dict() for item in self.items],
             "is_completed": self.is_completed,
             "selected_subject_ids": list(self.selected_subject_ids),
-            "subject_time_slots": dict(self.subject_time_slots),
-            "subject_lesson_map": dict(self.subject_lesson_map),
+            "subject_time_slots": {k: list(v) for k, v in self.subject_time_slots.items()},
+            "subject_lesson_map": {k: list(v) for k, v in self.subject_lesson_map.items()},
+            "subject_slot_durations": {k: list(v) for k, v in self.subject_slot_durations.items()},
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "DaySchedule":
-        """Create from dictionary"""
+        """Create from dictionary. Accepts legacy format (value is string) and converts to list."""
+        raw_slots = data.get("subject_time_slots", {}) or {}
+        raw_map = data.get("subject_lesson_map", {}) or {}
+        subject_time_slots = {
+            k: _normalize_to_list(v) for k, v in raw_slots.items()
+        }
+        subject_lesson_map = {
+            k: _normalize_to_list(v) for k, v in raw_map.items()
+        }
+        raw_dur = data.get("subject_slot_durations", {}) or {}
+        subject_slot_durations = {}
+        for k, v in raw_dur.items():
+            if isinstance(v, list):
+                subject_slot_durations[k] = [float(x) if x is not None else None for x in v]
         return cls(
             date=date.fromisoformat(data["date"]),
             items=[ScheduleItem.from_dict(item_data) for item_data in data.get("items", [])],
             is_completed=data.get("is_completed", False),
             selected_subject_ids=data.get("selected_subject_ids", []) or [],
-            subject_time_slots=data.get("subject_time_slots", {}) or {},
-            subject_lesson_map=data.get("subject_lesson_map", {}) or {},
+            subject_time_slots=subject_time_slots,
+            subject_lesson_map=subject_lesson_map,
+            subject_slot_durations=subject_slot_durations,
         )
 
 

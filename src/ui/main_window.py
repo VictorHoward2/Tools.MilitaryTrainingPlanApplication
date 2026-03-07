@@ -16,6 +16,8 @@ from src.ui.widgets.subject_manager import SubjectManager
 from src.ui.widgets.schedule_creator import ScheduleCreator
 from src.ui.widgets.schedule_viewer import ScheduleViewer
 from src.ui.widgets.progress_tracker import ProgressTracker
+from src.ui.widgets.settings_widget import SettingsWidget
+from src.config.settings import Settings
 from src.utils.logger import setup_logger
 from src.utils.i18n import tr, set_language, get_language, SUPPORTED_LANGUAGES
 
@@ -33,7 +35,10 @@ class MainWindow(QMainWindow):
         self.file_service = FileService()
         self.auth_service = AuthService(self.file_service)
         self.subject_service = SubjectService(self.file_service)
-        self.schedule_service = ScheduleService(self.file_service, self.subject_service)
+        self.settings = Settings()
+        self.schedule_service = ScheduleService(
+            self.file_service, self.subject_service, self.settings
+        )
         
         # Check authentication
         if not self.check_authentication():
@@ -112,6 +117,9 @@ class MainWindow(QMainWindow):
         self.progress_tracker = ProgressTracker(self.schedule_service)
         self.stacked_widget.addWidget(self.progress_tracker)
         
+        self.settings_widget = SettingsWidget(self.settings)
+        self.stacked_widget.addWidget(self.settings_widget)
+        
         # Show subject manager by default
         self.stacked_widget.setCurrentWidget(self.subject_manager)
     
@@ -162,6 +170,12 @@ class MainWindow(QMainWindow):
         progress_action.triggered.connect(lambda: self.show_view(3))
         view_menu.addAction(progress_action)
         self.menu_actions['progress'] = progress_action
+        
+        settings_action = QAction(tr("settings"), self)
+        settings_action.setShortcut("Ctrl+5")
+        settings_action.triggered.connect(lambda: self.show_view(4))
+        view_menu.addAction(settings_action)
+        self.menu_actions['settings'] = settings_action
         
         # Language menu
         language_menu = menubar.addMenu(tr("language"))
@@ -217,6 +231,11 @@ class MainWindow(QMainWindow):
         toolbar.addAction(progress_action)
         self.menu_actions['toolbar_progress'] = progress_action
         
+        settings_action = QAction(tr("settings"), self)
+        settings_action.triggered.connect(lambda: self.show_view(4))
+        toolbar.addAction(settings_action)
+        self.menu_actions['toolbar_settings'] = settings_action
+        
         toolbar.addSeparator()
         
         # Refresh action
@@ -244,7 +263,7 @@ class MainWindow(QMainWindow):
             self.stacked_widget.setCurrentIndex(index)
             
             # Update status
-            view_names = [tr("subjects"), tr("create_schedule"), tr("view_schedule"), tr("progress")]
+            view_names = [tr("subjects"), tr("create_schedule"), tr("view_schedule"), tr("progress"), tr("settings")]
             if index < len(view_names):
                 self.statusBar().showMessage(f"{tr('view')}: {view_names[index]}")
     
@@ -258,6 +277,8 @@ class MainWindow(QMainWindow):
             current_widget.load_schedules()
         elif isinstance(current_widget, ProgressTracker):
             current_widget.load_schedules()
+        elif isinstance(current_widget, SettingsWidget):
+            current_widget.load_values()
         
         self.statusBar().showMessage(tr("refreshed"), 2000)
     
@@ -324,6 +345,8 @@ class MainWindow(QMainWindow):
                 self.menu_actions['view_schedule'].setText(tr("view_schedule"))
             if 'progress' in self.menu_actions:
                 self.menu_actions['progress'].setText(tr("progress"))
+            if 'settings' in self.menu_actions:
+                self.menu_actions['settings'].setText(tr("settings"))
             if 'language_menu' in self.menu_actions:
                 self.menu_actions['language_menu'].setTitle(tr("language"))
             if 'vi' in self.menu_actions:
@@ -344,6 +367,8 @@ class MainWindow(QMainWindow):
                 self.menu_actions['toolbar_view_schedule'].setText(tr("view_schedule"))
             if 'toolbar_progress' in self.menu_actions:
                 self.menu_actions['toolbar_progress'].setText(tr("progress"))
+            if 'toolbar_settings' in self.menu_actions:
+                self.menu_actions['toolbar_settings'].setText(tr("settings"))
             if 'toolbar_refresh' in self.menu_actions:
                 self.menu_actions['toolbar_refresh'].setText(tr("refresh"))
         
@@ -360,7 +385,7 @@ class MainWindow(QMainWindow):
         # Update current view status
         current_index = self.stacked_widget.currentIndex()
         if current_index >= 0:
-            view_names = [tr("subjects"), tr("create_schedule"), tr("view_schedule"), tr("progress")]
+            view_names = [tr("subjects"), tr("create_schedule"), tr("view_schedule"), tr("progress"), tr("settings")]
             if current_index < len(view_names):
                 self.statusBar().showMessage(f"{tr('view')}: {view_names[current_index]}")
         

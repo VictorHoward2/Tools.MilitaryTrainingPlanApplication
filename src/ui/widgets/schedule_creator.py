@@ -19,6 +19,9 @@ from src.models.lesson import Lesson
 from src.services.schedule_service import ScheduleService
 from src.services.subject_service import SubjectService
 from src.utils.i18n import tr
+from src.utils.logger import setup_logger
+
+logger = setup_logger()
 
 
 class ScheduleCreator(QWidget):
@@ -142,6 +145,10 @@ class ScheduleCreator(QWidget):
         self.choose_lesson_btn.clicked.connect(self.choose_lesson_for_subject)
         self.choose_lesson_btn.setEnabled(False)
 
+        self.auto_fill_btn = QPushButton(tr("auto_fill_times_lessons"))
+        self.auto_fill_btn.clicked.connect(self.auto_fill_week_times_and_lessons)
+        self.auto_fill_btn.setEnabled(False)
+
         self.prev_step_btn = QPushButton("Quay lại")
         self.prev_step_btn.clicked.connect(self.prev_step)
         self.prev_step_btn.setEnabled(False)
@@ -164,6 +171,7 @@ class ScheduleCreator(QWidget):
         action_layout.addWidget(self.move_up_btn)
         action_layout.addWidget(self.move_down_btn)
         action_layout.addWidget(self.choose_lesson_btn)
+        action_layout.addWidget(self.auto_fill_btn)
         action_layout.addStretch()
         action_layout.addWidget(self.prev_step_btn)
         action_layout.addWidget(self.next_step_btn)
@@ -281,6 +289,11 @@ class ScheduleCreator(QWidget):
         self.move_up_btn.setEnabled(in_step2)
         self.move_down_btn.setEnabled(in_step2)
         self.choose_lesson_btn.setEnabled(in_step3)
+        has_any_subjects = any(
+            len(day.selected_subject_ids) > 0
+            for day in self.current_schedule.weeks[self.current_week_index].days
+        )
+        self.auto_fill_btn.setEnabled((in_step2 or in_step3) and has_any_subjects)
 
         self.refresh_subject_table()
         self.refresh_order_table()
@@ -343,11 +356,7 @@ class ScheduleCreator(QWidget):
                     self.order_table.setRowCount(row + 1)
                 subject = self.subject_service.get_subject(subject_id)
                 subject_name = subject.name if subject else "Môn học"
-                time_str = day.subject_time_slots.get(subject_id, "")
-                text = subject_name
-                if time_str:
-                    text += f"\n{time_str}"
-                table_item = QTableWidgetItem(text)
+                table_item = QTableWidgetItem(subject_name)
                 table_item.setData(Qt.UserRole, subject_id)
                 self.order_table.setItem(row, day_index, table_item)
                 row += 1
@@ -367,49 +376,41 @@ class ScheduleCreator(QWidget):
                 self.lesson_table.setItem(row, day_index, table_item)
                 row += 1
             for subject_id in day.selected_subject_ids:
-                if row >= self.lesson_table.rowCount():
-                    self.lesson_table.setRowCount(row + 1)
-                subject = self.subject_service.get_subject(subject_id)
-                subject_name = subject.name if subject else "Môn học"
-                lesson_id = day.subject_lesson_map.get(subject_id)
-                lesson_name = ""
-                if subject and lesson_id:
-                    lesson = next((l for l in subject.lessons if l.lesson_id == lesson_id), None)
-                    lesson_name = lesson.name if lesson else ""
-                time_str = day.subject_time_slots.get(subject_id, "")
-                text = subject_name
-                if time_str and lesson_name and subject:
-                    try:
-                        hour, minute = map(int, time_str.split(":"))
-                        start_time = time(hour, minute)
-                        duration = None
-                        if lesson_id:
-                            lesson = next(
-                                (l for l in subject.lessons if l.lesson_id == lesson_id),
-                                None
-                            )
-                            if lesson:
-                                duration = subject.get_lesson_duration(lesson)
-                        if duration is None:
-                            duration = subject.default_duration
-                        if duration:
-                            from src.utils.date_utils import add_hours_to_time
-                            end_time = add_hours_to_time(start_time, duration)
-                            text = (
-                                f"{start_time.strftime('%H:%M')} - "
-                                f"{end_time.strftime('%H:%M')}: "
-                                f"{subject_name}: {lesson_name}"
-                            )
-                        else:
-                            text = f"{time_str}: {subject_name}: {lesson_name}"
-                    except:
-                        text = f"{time_str}: {subject_name}: {lesson_name}"
-                elif lesson_name:
-                    text = f"{subject_name}: {lesson_name}"
-                table_item = QTableWidgetItem(text)
-                table_item.setData(Qt.UserRole, subject_id)
-                self.lesson_table.setItem(row, day_index, table_item)
-                row += 1
+                lesson_ids = day.get_lesson_ids(subject_id)
+                time_slots = day.get_time_slots(subject_id)
+                slot_count = max(len(lesson_ids), len(time_slots), 1)
+                for slot_index in range(slot_count):
+                    if row >= self.lesson_table.rowCount():
+                        self.lesson_table.setRowCount(row + 1)
+                    subject = self.subject_service.get_subject(subject_id)
+                    subject_name = subject.name if subject else "Môn học"
+                    lesson_id = lesson_ids[slot_index] if slot_index < len(lesson_ids) else None
+                    lesson_name = ""
+                    if subject and lesson_id:
+                        lesson = next((l for l in subject.lessons if l.lesson_id == lesson_id), None)
+                        lesson_name = lesson.name if lesson else ""
+                    time_str = time_slots[slot_index] if slot_index < len(time_slots) else ""
+                    text = subject_name
+                    if time_str and lesson_name and subject:
+                        try:
+                            hour, minute = map(int, time_str.split(":"))
+                            start_time = time(hour, minute)
+                            les = next((l for l in subject.lessons if l.lesson_id == lesson_id), None) if lesson_id else None
+                            duration = subject.get_lesson_duration(les) if les else (subject.default_duration or 0)
+                            if duration:
+                                from src.utils.date_utils import add_hours_to_time
+                                end_time = add_hours_to_time(start_time, duration)
+                                text = f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}: {subject_name}: {lesson_name}"
+                            else:
+                                text = f"{time_str}: {subject_name}: {lesson_name}"
+                        except Exception:
+                            text = f"{time_str}: {subject_name}: {lesson_name}" if time_str or lesson_name else subject_name
+                    elif lesson_name:
+                        text = f"{subject_name}: {lesson_name}"
+                    table_item = QTableWidgetItem(text)
+                    table_item.setData(Qt.UserRole, (subject_id, slot_index))
+                    self.lesson_table.setItem(row, day_index, table_item)
+                    row += 1
 
     def on_subject_table_double_clicked(self, row: int, col: int):
         self.add_subject_to_day(preselected_day=col)
@@ -531,7 +532,11 @@ class ScheduleCreator(QWidget):
         if not current:
             QMessageBox.warning(self, tr("error"), "Vui lòng chọn môn học để chọn bài")
             return
-        subject_id = current.data(Qt.UserRole)
+        role_data = current.data(Qt.UserRole)
+        if isinstance(role_data, tuple):
+            subject_id, slot_index = role_data
+        else:
+            subject_id, slot_index = role_data, 0
         if not subject_id:
             QMessageBox.warning(self, tr("error"), "Không thể chọn bài cho môn học cố định")
             return
@@ -545,23 +550,25 @@ class ScheduleCreator(QWidget):
             QMessageBox.warning(self, tr("error"), "Không tìm thấy môn học")
             return
 
-        # Calculate default start time
-        selected_index = day.selected_subject_ids.index(subject_id)
-        default_start_time = self._calculate_default_start_time(day, selected_index)
-        current_time_str = day.subject_time_slots.get(subject_id)
+        default_start_time = self._calculate_default_start_time(day, subject_id, slot_index)
+        time_slots = day.get_time_slots(subject_id)
         current_time = None
-        if current_time_str:
+        if slot_index < len(time_slots) and time_slots[slot_index]:
             try:
-                hour, minute = map(int, current_time_str.split(":"))
+                hour, minute = map(int, time_slots[slot_index].split(":"))
                 current_time = time(hour, minute)
-            except:
+            except Exception:
                 pass
+        lesson_ids = day.get_lesson_ids(subject_id)
+        current_lesson_id = lesson_ids[slot_index] if slot_index < len(lesson_ids) else None
 
         dialog = ChooseLessonDialog(
-            subject, 
-            day.subject_lesson_map.get(subject_id),
+            subject,
+            current_lesson_id,
             default_start_time,
             current_time,
+            day.date,
+            self.schedule_service,
             self
         )
         if not dialog.exec():
@@ -569,57 +576,73 @@ class ScheduleCreator(QWidget):
         lesson, selected_time = dialog.get_selection()
         if not lesson:
             return
-        
-        # Set both time and lesson
+
         if selected_time:
             success, error = self.schedule_service.set_day_subject_time(
-                self.current_schedule, self.current_week_index + 1, day_index, subject_id, selected_time
+                self.current_schedule, self.current_week_index + 1, day_index, subject_id, selected_time, slot_index
             )
             if not success:
                 QMessageBox.warning(self, tr("error"), error or "Không thể đặt giờ")
                 return
-        
         success, error = self.schedule_service.set_day_subject_lesson(
-            self.current_schedule, self.current_week_index + 1, day_index, subject_id, lesson.lesson_id
+            self.current_schedule, self.current_week_index + 1, day_index, subject_id, lesson.lesson_id, slot_index
         )
         if not success:
             QMessageBox.warning(self, tr("error"), error or "Không thể chọn bài học")
             return
         self.update_step_ui()
     
-    def _calculate_default_start_time(self, day: 'DaySchedule', row: int) -> time:
-        """Calculate default start time for a subject"""
-        # If it's the first subject (row 0), default to 7:00
-        if row == 0:
-            return time(7, 0)
-        
-        # Otherwise, get the end time of the previous subject
-        if row > 0 and row <= len(day.selected_subject_ids):
-            prev_subject_id = day.selected_subject_ids[row - 1]
-            prev_time_str = day.subject_time_slots.get(prev_subject_id)
-            if prev_time_str:
-                try:
-                    hour, minute = map(int, prev_time_str.split(":"))
-                    prev_start_time = time(hour, minute)
-                    # Get previous subject to calculate end time
-                    prev_subject = self.subject_service.get_subject(prev_subject_id)
-                    if prev_subject:
-                        prev_lesson_id = day.subject_lesson_map.get(prev_subject_id)
-                        if prev_lesson_id:
-                            prev_lesson = next((l for l in prev_subject.lessons if l.lesson_id == prev_lesson_id), None)
-                            if prev_lesson:
-                                duration = prev_subject.get_lesson_duration(prev_lesson)
-                                from src.utils.date_utils import add_hours_to_time
-                                return add_hours_to_time(prev_start_time, duration)
-                        # If no lesson selected, use default duration
-                        if prev_subject.default_duration:
-                            from src.utils.date_utils import add_hours_to_time
-                            return add_hours_to_time(prev_start_time, prev_subject.default_duration)
-                except:
-                    pass
-        
-        # Fallback to 7:00
-        return time(7, 0)
+    def _calculate_default_start_time(self, day: 'DaySchedule', subject_id: str, slot_index: int) -> time:
+        """Calculate default start time for a subject slot (uses season times for this day)."""
+        from src.utils.date_utils import add_hours_to_time
+        times = self.schedule_service.get_schedule_times_for_date(day.date)
+        morning_start = times["morning_start"]
+
+        if slot_index == 0:
+            try:
+                idx = day.selected_subject_ids.index(subject_id)
+            except ValueError:
+                idx = 0
+            if idx == 0:
+                return morning_start
+            prev_id = day.selected_subject_ids[idx - 1]
+            slots = day.get_time_slots(prev_id)
+            lessons = day.get_lesson_ids(prev_id)
+            if not slots:
+                return morning_start
+            last_start_str = slots[-1]
+            try:
+                h, m = map(int, last_start_str.split(":"))
+                last_start = time(h, m)
+            except Exception:
+                return morning_start
+            prev_subject = self.subject_service.get_subject(prev_id)
+            if not prev_subject:
+                return morning_start
+            if lessons and len(lessons) <= len(slots):
+                last_lesson_id = lessons[-1]
+                last_lesson = next((l for l in prev_subject.lessons if l.lesson_id == last_lesson_id), None)
+                dur = prev_subject.get_lesson_duration(last_lesson) if last_lesson else (prev_subject.default_duration or 0)
+            else:
+                dur = prev_subject.default_duration or 0
+            return add_hours_to_time(last_start, dur)
+
+        time_slots = day.get_time_slots(subject_id)
+        lesson_ids = day.get_lesson_ids(subject_id)
+        if slot_index > 0 and slot_index <= len(time_slots) and slot_index <= len(lesson_ids):
+            prev_start_str = time_slots[slot_index - 1]
+            prev_lesson_id = lesson_ids[slot_index - 1]
+            try:
+                h, m = map(int, prev_start_str.split(":"))
+                prev_start = time(h, m)
+            except Exception:
+                return morning_start
+            subj = self.subject_service.get_subject(subject_id)
+            if subj:
+                prev_lesson = next((l for l in subj.lessons if l.lesson_id == prev_lesson_id), None)
+                dur = subj.get_lesson_duration(prev_lesson) if prev_lesson else (subj.default_duration or 0)
+                return add_hours_to_time(prev_start, dur)
+        return morning_start
 
     def copy_previous_week_subjects(self):
         if not self.current_schedule or self.current_week_index <= 0:
@@ -632,31 +655,54 @@ class ScheduleCreator(QWidget):
             return
         self.current_step_index = 2
         self.update_step_ui()
-    
-    def validate_current_week(self):
-        """Validate current week schedule"""
+
+    def auto_fill_week_times_and_lessons(self):
+        """Auto-fill subject_time_slots and subject_lesson_map for current week."""
         if not self.current_schedule:
             return
-
-        success, error = self.schedule_service.build_week_items(
+        success, error, days_with_issues = self.schedule_service.auto_fill_week_times_and_lessons(
             self.current_schedule, self.current_week_index + 1
         )
         if not success:
-            QMessageBox.warning(self, tr("error"), error or "Không thể tạo thời khóa biểu tuần")
+            QMessageBox.warning(self, tr("error"), error or tr("auto_fill_failed"))
+            return
+        self.update_step_ui()
+        if days_with_issues:
+            lines = [f"{name} ({date}): {suggestion}" for name, date, suggestion in days_with_issues]
+            message = (
+                tr("auto_fill_done")
+                + "\n\n"
+                + tr("auto_fill_some_days_short")
+                + "\n\n"
+                + "\n".join(lines)
+            )
+            QMessageBox.warning(self, tr("validate_warning_title"), message)
+        else:
+            QMessageBox.information(self, tr("success"), tr("auto_fill_done"))
+
+    def validate_current_week(self):
+        """Validate current week schedule. Gom tất cả kiểm tra (thiếu thông tin, trùng giờ, không đủ tổng giờ) vào một."""
+        if not self.current_schedule:
             return
 
-        week = self.current_schedule.weeks[self.current_week_index]
-        issues = []
+        week_num = self.current_week_index + 1
+        schedule_label = self.current_schedule.name or getattr(self.current_schedule, "schedule_id", "") or "TKB"
 
-        for day_index, day in enumerate(week.days):
-            is_valid, total_hours, suggestion = self.schedule_service.validate_day_schedule(day)
-            if not is_valid:
-                day_name = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][day_index]
-                issues.append(f"{day_name}: {suggestion}")
+        is_valid, issues = self.schedule_service.validate_week_schedule(
+            self.current_schedule, week_num
+        )
 
-        if issues:
-            message = "Các vấn đề phát hiện:\n\n" + "\n".join(issues)
-            QMessageBox.warning(self, "Cảnh báo", message)
+        if not is_valid:
+            logger.error(
+                "[Kiểm tra TKB] Tuần %s (%s): phát hiện %s vấn đề.\n%s",
+                week_num, schedule_label, len(issues), "\n".join(issues)
+            )
+            message = (
+                f"Tuần {week_num}: phát hiện {len(issues)} vấn đề.\n\n"
+                + "\n\n".join(issues)
+                + "\n\nChi tiết đã ghi trong file log (thư mục logs/)."
+            )
+            QMessageBox.warning(self, tr("validate_warning_title"), message)
         else:
             QMessageBox.information(self, tr("success"), tr("week_schedule_valid"))
     
@@ -666,11 +712,11 @@ class ScheduleCreator(QWidget):
             return
 
         for week_index in range(len(self.current_schedule.weeks)):
-            success, error = self.schedule_service.build_week_items(
+            success, error, _ = self.schedule_service.build_week_items(
                 self.current_schedule, week_index + 1
             )
             if not success:
-                QMessageBox.warning(self, tr("error"), error or "Không thể tạo thời khóa biểu")
+                QMessageBox.warning(self, tr("error"), error or "Không thể tạo kế hoạch huấn luyện")
                 return
 
         success, error = self.schedule_service.save_schedule(self.current_schedule)
@@ -842,16 +888,21 @@ class AddSubjectDialog(QDialog):
 
 
 class ChooseLessonDialog(QDialog):
-    """Dialog for choosing lesson and time for a subject"""
+    """Dialog for choosing lesson and time for a subject (time range by season)."""
 
     def __init__(self, subject: Subject, current_lesson_id: Optional[str] = None,
                  default_start_time: Optional[time] = None, current_time: Optional[time] = None,
-                 parent=None):
+                 day_date: Optional[date] = None, schedule_service=None, parent=None):
         super().__init__(parent)
         self.subject = subject
         self.selected_lesson = None
         self.current_lesson_id = current_lesson_id
-        self.default_start_time = default_start_time or time(7, 0)
+        self.day_date = day_date
+        self.schedule_service = schedule_service
+        self._times = None
+        if day_date and schedule_service:
+            self._times = schedule_service.get_schedule_times_for_date(day_date)
+        self.default_start_time = default_start_time or (self._times["morning_start"] if self._times else time(7, 0))
         self.current_time = current_time
         self.setWindowTitle("Chọn bài học và giờ học")
         self.setModal(True)
@@ -861,7 +912,6 @@ class ChooseLessonDialog(QDialog):
     def setup_ui(self):
         layout = QVBoxLayout()
         
-        # Lock combo widths and allow horizontal scroll for long items
         combo_fixed_width = 300
         
         def apply_combo_style(combo: QComboBox):
@@ -870,28 +920,39 @@ class ChooseLessonDialog(QDialog):
             view.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             combo.setView(view)
         
-        # Start time selection
         start_time_layout = QHBoxLayout()
         start_time_layout.addWidget(QLabel("Giờ bắt đầu dự kiến:"))
         self.start_time_combo = QComboBox()
-        # Populate time options (7:00 to 16:30 in 30-minute intervals)
-        for hour in range(7, 17):
-            for minute in [0, 30]:
-                if hour == 16 and minute == 30:
-                    break
-                time_str = f"{hour:02d}:{minute:02d}"
-                time_obj = time(hour, minute)
-                self.start_time_combo.addItem(time_str, time_obj)
+        # Time range by season: morning_start to afternoon_end (30-min steps)
+        if self._times:
+            start_t = self._times["morning_start"]
+            end_t = self._times["afternoon_end"]
+        else:
+            start_t = time(7, 0)
+            end_t = time(16, 30)
+        start_minutes = start_t.hour * 60 + start_t.minute
+        end_minutes = end_t.hour * 60 + end_t.minute
+        for m in range(start_minutes, end_minutes + 1, 30):
+            h, mn = divmod(m, 60)
+            if h >= 24:
+                break
+            time_obj = time(h, mn)
+            self.start_time_combo.addItem(time_obj.strftime("%H:%M"), time_obj)
         apply_combo_style(self.start_time_combo)
         start_time_layout.addWidget(self.start_time_combo)
         layout.addLayout(start_time_layout)
         
-        # Set default or current time
         start_time_to_use = self.current_time if self.current_time else self.default_start_time
         for i in range(self.start_time_combo.count()):
             if self.start_time_combo.itemData(i) == start_time_to_use:
                 self.start_time_combo.setCurrentIndex(i)
                 break
+        else:
+            # Clamp to nearest option
+            for i in range(self.start_time_combo.count()):
+                if self.start_time_combo.itemData(i) >= start_time_to_use:
+                    self.start_time_combo.setCurrentIndex(i)
+                    break
         
         # Lesson selection
         lesson_layout = QHBoxLayout()
